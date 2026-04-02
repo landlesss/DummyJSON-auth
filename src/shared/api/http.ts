@@ -38,15 +38,26 @@ export async function httpJson<TResponse>(
   })
 
   if (res.ok) {
-    return (await res.json()) as TResponse
+    const text = await res.text()
+    if (!text.trim()) {
+      return undefined as TResponse
+    }
+    try {
+      return JSON.parse(text) as TResponse
+    } catch {
+      throw new ApiError('Ответ сервера не является JSON', res.status)
+    }
   }
 
   let message = `Request failed with status ${res.status}`
-  try {
-    const payload = (await res.json()) as ApiErrorPayload
-    if (payload?.message) message = payload.message
-  } catch {
-    // ignore
+  const errText = await res.text()
+  if (errText.trim()) {
+    try {
+      const payload = JSON.parse(errText) as ApiErrorPayload
+      if (payload?.message) message = payload.message
+    } catch {
+      message = errText.slice(0, 200)
+    }
   }
   throw new ApiError(message, res.status)
 }

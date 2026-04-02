@@ -704,6 +704,10 @@ input {
   color: #374151;
 }
 
+.productsIconBtn .productsIconBtnGraphic {
+  display: block;
+}
+
 .productsAddBtn {
   display: inline-flex;
   align-items: center;

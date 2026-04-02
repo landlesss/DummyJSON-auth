@@ -1,8 +1,10 @@
 import { dummyjsonUrl } from '../../shared/api/dummyjson.ts'
 import { httpJson } from '../../shared/api/http.ts'
+import { sanitizeProductThumbnailUrl } from '../../shared/lib/productThumbnail.ts'
 import type { Product, ProductsResponse } from './productsTypes.ts'
 
 function mapProduct(p: ProductsResponse['products'][number]): Product {
+  const thumb = sanitizeProductThumbnailUrl(p.thumbnail) ?? ''
   return {
     id: p.id,
     title: p.title,
@@ -11,7 +13,7 @@ function mapProduct(p: ProductsResponse['products'][number]): Product {
     brand: p.brand ?? '—',
     sku: p.sku ?? '—',
     category: p.category ?? '—',
-    thumbnail: p.thumbnail ?? '',
+    thumbnail: thumb,
   }
 }
 

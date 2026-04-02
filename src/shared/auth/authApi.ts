@@ -1,34 +1,31 @@
 import { dummyjsonUrl } from '../api/dummyjson.ts'
-import { httpJson } from '../api/http.ts'
+import { ApiError, httpJson } from '../api/http.ts'
+import { dummyJsonLoginResponseSchema } from './sessionSchema.ts'
 import type { AuthSession, AuthUser } from './authTypes.ts'
-
-type DummyJsonLoginResponse = {
-  id: number
-  username: string
-  firstName: string
-  lastName: string
-  image: string
-  accessToken?: string
-  token?: string
-}
 
 export async function loginWithDummyJson(input: {
   username: string
   password: string
 }): Promise<AuthSession> {
-  const res = await httpJson<DummyJsonLoginResponse>(dummyjsonUrl('/auth/login'), {
+  const raw = await httpJson<unknown>(dummyjsonUrl('/auth/login'), {
     method: 'POST',
     body: {
       username: input.username,
       password: input.password,
-      // DummyJSON allows this to get cookies; we don't need cookies.
       expiresInMins: 60,
     },
   })
 
+  const parsed = dummyJsonLoginResponseSchema.safeParse(raw)
+  if (!parsed.success) {
+    const msg = parsed.error.issues.map((i) => i.message).join('; ') || 'Некорректный ответ сервера'
+    throw new ApiError(msg, 502)
+  }
+
+  const res = parsed.data
   const token = res.accessToken ?? res.token
   if (!token) {
-    throw new Error('Auth token missing in response')
+    throw new ApiError('Токен авторизации отсутствует', 502)
   }
 
   const user: AuthUser = {
@@ -41,4 +38,3 @@ export async function loginWithDummyJson(input: {
 
   return { token, user }
 }
-
