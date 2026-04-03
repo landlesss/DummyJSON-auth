@@ -14,7 +14,7 @@ type FieldErrors = {
 
 function validate(input: { username: string; password: string }): FieldErrors {
   return {
-    username: input.username.trim() ? null : 'Укажите почту',
+    username: input.username.trim() ? null : 'Укажите логин',
     password: input.password.trim() ? null : 'Введите пароль',
     form: null,
   }
@@ -34,16 +34,16 @@ function LoginLogo() {
   )
 }
 
-function IconMail() {
+function IconUser() {
   return (
     <svg className="loginInputIcon" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
+      <circle cx="10" cy="6.75" r="2.75" stroke="currentColor" strokeWidth="1.25" />
       <path
-        d="M2.5 5.833h15v8.334h-15V5.833z"
+        d="M3.75 16.25v-.42C3.75 13.5 6.33 11.25 10 11.25s6.25 2.25 6.25 4.58v.42"
         stroke="currentColor"
         strokeWidth="1.25"
-        strokeLinejoin="round"
+        strokeLinecap="round"
       />
-      <path d="M2.5 6.25L10 11.25l7.5-5" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" />
     </svg>
   )
 }
@@ -162,7 +162,7 @@ export function LoginPage() {
 
           <form onSubmit={onSubmit} className="loginForm">
             <label className="field loginField">
-              <span className="fieldLabel">Почта</span>
+              <span className="fieldLabel">Логин</span>
               <div
                 className={[
                   'inputShell',
@@ -172,7 +172,7 @@ export function LoginPage() {
                   .join(' ')}
               >
                 <span className="inputShellPrefix">
-                  <IconMail />
+                  <IconUser />
                 </span>
                 <input
                   className="inputShellControl"
@@ -181,7 +181,7 @@ export function LoginPage() {
                   autoComplete="username"
                   placeholder="emilys"
                   type="text"
-                  inputMode="email"
+                  aria-label="Логин DummyJSON"
                 />
                 {username ? (
                   <button

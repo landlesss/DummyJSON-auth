@@ -1,9 +1,11 @@
 import { dummyjsonUrl } from '../../shared/api/dummyjson.ts'
-import { httpJson } from '../../shared/api/http.ts'
+import { ApiError, httpJson } from '../../shared/api/http.ts'
 import { sanitizeProductThumbnailUrl } from '../../shared/lib/productThumbnail.ts'
-import type { Product, ProductsResponse } from './productsTypes.ts'
+import type { ProductDto } from './productsSchema.ts'
+import { productsResponseSchema } from './productsSchema.ts'
+import type { Product } from './productsTypes.ts'
 
-function mapProduct(p: ProductsResponse['products'][number]): Product {
+function mapProduct(p: ProductDto): Product {
   const thumb = sanitizeProductThumbnailUrl(p.thumbnail) ?? ''
   return {
     id: p.id,
@@ -35,7 +37,14 @@ export async function fetchProducts(
   const url = dummyjsonUrl(
     `${base}${joiner}limit=${input.limit}&skip=${input.skip}&${sortParams}`,
   )
-  const res = await httpJson<ProductsResponse>(url)
+  const raw = await httpJson<unknown>(url)
+  const parsed = productsResponseSchema.safeParse(raw)
+  if (!parsed.success) {
+    const msg =
+      parsed.error.issues.map((i) => i.message).join('; ') || 'Некорректный ответ списка товаров'
+    throw new ApiError(msg, 502)
+  }
+  const res = parsed.data
 
   return {
     items: res.products.map(mapProduct),

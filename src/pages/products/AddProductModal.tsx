@@ -12,6 +12,13 @@ type FormState = {
   sku: string
 }
 
+const emptyForm: FormState = {
+  title: '',
+  price: '',
+  brand: '',
+  sku: '',
+}
+
 export function AddProductModal({
   open,
   onClose,
@@ -21,12 +28,12 @@ export function AddProductModal({
   onClose: () => void
   onAdd: (p: Product) => void
 }) {
-  const [form, setForm] = useState<FormState>({
-    title: '',
-    price: '',
-    brand: '',
-    sku: '',
-  })
+  const [form, setForm] = useState<FormState>(emptyForm)
+
+  const handleClose = () => {
+    setForm(emptyForm)
+    onClose()
+  }
 
   const errors = useMemo(() => {
     const title = form.title.trim() ? null : 'Укажите наименование'
@@ -61,18 +68,17 @@ export function AddProductModal({
 
     onAdd(created)
     toast.success('Товар добавлен')
-    onClose()
-    setForm({ title: '', price: '', brand: '', sku: '' })
+    handleClose()
   }
 
   return (
     <Modal
       title="Добавить товар"
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       footer={
         <div className="row" style={{ justifyContent: 'flex-end' }}>
-          <Button variant="secondary" onClick={onClose}>
+          <Button variant="secondary" onClick={handleClose}>
             Отмена
           </Button>
           <Button onClick={submit} disabled={!canSubmit}>

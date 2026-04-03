@@ -1,3 +1,17 @@
+/** Иконка из ТЗ: три линии разной длины (признак сортировки по столбцам). */
+export function IconSortLines() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
+      <path
+        d="M2.5 4.5h13M4 9h10M5.5 13.5h7"
+        stroke="currentColor"
+        strokeWidth="1.35"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
 export function IconSearch() {
   return (
     <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>

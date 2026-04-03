@@ -1,28 +1,32 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { fetchProducts } from '../productsApi.ts'
 import type { Product } from '../productsTypes.ts'
 import { categorySubtitle } from '../lib/categoryLabels.ts'
 import { formatPriceRub } from '../lib/formatPrice.ts'
+import {
+  computeProductsApiWindow,
+  PRODUCTS_PAGE_SIZE,
+} from '../lib/productsTableParams.ts'
+import { PRODUCTS_LIST_ROOT_KEY } from '../lib/queryKeys.ts'
 import type { SortDir, SortKey } from '../lib/sortProducts.ts'
+import { formatSortStateDescription } from '../lib/sortLabels.ts'
 import { sortLocalProducts } from '../lib/sortProducts.ts'
 import { visiblePageRange } from '../lib/pagination.ts'
-import { PRODUCTS_LIST_ROOT_KEY } from '../lib/queryKeys.ts'
 import { AddProductModal } from '../AddProductModal.tsx'
 import {
   ChevronLeft,
   ChevronRight,
   IconPlusCircle,
+  IconSortLines,
   RowDotsMenu,
 } from './ProductsIcons.tsx'
-
-const PAGE_SIZE = 20
 
 type ProductsPanelProps = {
   debouncedQ: string
   sort: { key: SortKey; dir: SortDir }
-  onSortChange: React.Dispatch<React.SetStateAction<{ key: SortKey; dir: SortDir }>>
+  onSortChange: Dispatch<SetStateAction<{ key: SortKey; dir: SortDir }>>
   created: Product[]
   onCreatedAdd: (p: Product) => void
 }
@@ -36,17 +40,21 @@ export function ProductsPanel({
 }: ProductsPanelProps) {
   const qc = useQueryClient()
   const [page, setPage] = useState(1)
-  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set())
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
   const [apiTotalCache, setApiTotalCache] = useState(0)
 
-  const capCreated = Math.min(created.length, PAGE_SIZE)
+  const capCreated = Math.min(created.length, PRODUCTS_PAGE_SIZE)
 
-  const totalPages = Math.max(1, Math.ceil((apiTotalCache + created.length) / PAGE_SIZE))
+  const totalPages = Math.max(1, Math.ceil((apiTotalCache + created.length) / PRODUCTS_PAGE_SIZE))
   const activePage = Math.min(Math.max(1, page), totalPages)
 
-  const apiSkip = Math.max(0, (activePage - 1) * PAGE_SIZE - capCreated)
-  const apiLimit = activePage === 1 ? PAGE_SIZE - capCreated : PAGE_SIZE
+  const { apiSkip, apiLimit } = computeProductsApiWindow({
+    activePage,
+    pageSize: PRODUCTS_PAGE_SIZE,
+    createdCount: created.length,
+  })
 
   const query = useQuery({
     queryKey: [
@@ -84,7 +92,6 @@ export function ProductsPanel({
 
   useEffect(() => {
     if (typeof query.data?.total === 'number') {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setApiTotalCache(query.data.total)
     }
   }, [query.data?.total])
@@ -100,8 +107,8 @@ export function ProductsPanel({
     return apiItems
   }, [activePage, capCreated, created, query.data?.items, sort])
 
-  const rowFrom = totalCount === 0 ? 0 : (activePage - 1) * PAGE_SIZE + 1
-  const rowTo = totalCount === 0 ? 0 : Math.min(activePage * PAGE_SIZE, totalCount)
+  const rowFrom = totalCount === 0 ? 0 : (activePage - 1) * PRODUCTS_PAGE_SIZE + 1
+  const rowTo = totalCount === 0 ? 0 : Math.min(activePage * PRODUCTS_PAGE_SIZE, totalCount)
 
   const toggleSort = (key: SortKey) => {
     onSortChange((prev) =>
@@ -109,13 +116,32 @@ export function ProductsPanel({
     )
   }
 
-  const refresh = async () => {
-    await qc.invalidateQueries({ queryKey: [...PRODUCTS_LIST_ROOT_KEY] })
-    toast.success('Обновлено')
+  /** Как повторный клик по активному заголовку: только asc ↔ desc. */
+  const toggleActiveSortDirection = () => {
+    onSortChange((prev) => ({
+      ...prev,
+      dir: prev.dir === 'asc' ? 'desc' : 'asc',
+    }))
   }
 
-  const selectRow = (id: number) => {
-    setSelectedId((prev) => (prev === id ? null : id))
+  const refresh = async () => {
+    if (isRefreshing) return
+    setIsRefreshing(true)
+    try {
+      await qc.invalidateQueries({ queryKey: [...PRODUCTS_LIST_ROOT_KEY] })
+      toast.success('Обновлено')
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+
+  const toggleRowSelected = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
   }
 
   return (
@@ -126,9 +152,20 @@ export function ProductsPanel({
           <div className="productsToolbar">
             <button
               type="button"
+              className="productsSortHint"
+              title="Поменять порядок сортировки (возрастание / убывание)"
+              aria-label={`Переключить направление сортировки. ${formatSortStateDescription(sort)}`}
+              onClick={toggleActiveSortDirection}
+            >
+              <IconSortLines />
+            </button>
+            <button
+              type="button"
               className="productsIconBtn"
               title="Обновить"
               aria-label="Обновить таблицу"
+              aria-busy={isRefreshing}
+              disabled={isRefreshing}
               onClick={() => void refresh()}
             >
               <img
@@ -136,7 +173,11 @@ export function ProductsPanel({
                 alt=""
                 width={22}
                 height={22}
-                className="productsIconBtnGraphic"
+                className={
+                  isRefreshing
+                    ? 'productsIconBtnGraphic productsIconBtnGraphic--spin'
+                    : 'productsIconBtnGraphic'
+                }
                 aria-hidden
               />
             </button>
@@ -202,19 +243,19 @@ export function ProductsPanel({
                 </tr>
               ) : (
                 tableRows.map((p) => {
-                  const selected = selectedId === p.id
+                  const selected = selectedIds.has(p.id)
                   return (
                     <tr
                       key={p.id}
                       className={selected ? 'productsTr productsTr--selected' : 'productsTr'}
-                      onClick={() => selectRow(p.id)}
+                      onClick={() => toggleRowSelected(p.id)}
                     >
                       <td className="productsTd productsTd--check">
                         <input
                           type="checkbox"
                           className="productsCheckbox"
                           checked={selected}
-                          onChange={() => selectRow(p.id)}
+                          onChange={() => toggleRowSelected(p.id)}
                           onClick={(e) => e.stopPropagation()}
                           aria-label={`Выбрать ${p.title}`}
                         />
@@ -287,7 +328,7 @@ export function ProductsPanel({
 
         <footer className="productsFooter">
           <p className="productsFooterInfo">
-            Показано {rowFrom}–{rowTo} из {totalCount}
+            Показано {`${rowFrom}\u2013${rowTo}`} из {totalCount}
           </p>
           <nav className="productsPagination" aria-label="Страницы">
             <button
