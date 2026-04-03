@@ -1,48 +1,58 @@
-## Aiti Guru — тестовое (React)
+#Product admin (React)
 
-### Стек
+Small admin-style UI for browsing products: authentication, searchable sortable table, and local “add product” flow. Data from [DummyJSON](https://dummyjson.com).
 
-- **React 18+** (фактически в проекте React 19)
-- **TypeScript strict**
+## Stack
+
+- **React** 18+ (built with React 19)
+- **TypeScript** (strict mode)
 - **React Router**
-- **TanStack Query** (загрузка/кэш/рефетч продуктов)
-- **react-hot-toast** (уведомления)
+- **TanStack Query** — data fetching and caching
+- **react-hot-toast** — notifications
+- **Zod** — runtime validation for API payloads and session storage
 
-### Запуск
+## Getting started
 
 ```bash
 npm install
 npm run dev
 ```
 
-### Авторизация (DummyJSON)
+```bash
+npm test      # Vitest
+npm run lint
+npm run build
+```
 
-Используется `DummyJSON Auth` (`POST /auth/login`).
+## Authentication (DummyJSON)
 
-- **Remember me включён** → токен хранится в `localStorage` (переживает закрытие браузера)
-- **Remember me выключен** → токен хранится в `sessionStorage` (сбрасывается при закрытии вкладки)
+Uses `DummyJSON Auth` — `POST /auth/login`.
 
-Для теста используйте **любого пользователя из** [dummyjson.com/users](https://dummyjson.com/users) (логин + пароль из ответа). В документации Auth приводят пример:
-- username: `emilys`
-- password: `emilyspass`
+- **Remember me on** — session token in `localStorage` (survives closing the browser).
+- **Remember me off** — token in `sessionStorage` (cleared when the tab/session ends).
 
-> Раньше в старых гайдах часто фигурировали `kminchelle` / `0lelplR` — в текущем наборе пользователей DummyJSON этого аккаунта нет, логин отдаёт **400 Invalid credentials**.
+Use any user from [dummyjson.com/users](https://dummyjson.com/users) (username + password from the API). Example from DummyJSON docs:
 
-### Товары
+- Username: `emilys`
+- Password: `emilyspass`
 
-Источник данных: `DummyJSON Products`.
+> Some older tutorials mention `kminchelle` — that user is not in the current DummyJSON dataset; login returns **400 Invalid credentials**.
 
-- **Загрузка списка** + индикатор (верхний progress bar)
-- **Поиск**: через API (`/products/search?q=...`)
-- **Сортировка**: по клику на заголовок столбца, состояние сортировки сохраняется в UI
-- **Добавление**: модалка (локально, без сохранения в API) + Toast при успехе
-- **Рейтинг < 3.5** подсвечивается красным
-- **Иконка с тремя точками**: заглушка (как в ТЗ)
+## Products
 
-### Использование ИИ (требование ТЗ)
+Backed by **DummyJSON Products**.
 
-Основной код написан самостоятельно — ИИ не использовался для генерации проекта целиком.
+- Paginated list with a top **progress bar** while requests are in flight
+- **Search** via API (`/products/search?q=...`)
+- **Sorting** by column (server-side `sortBy` / `order`); direction can also be toggled from the toolbar control
+- **Add product** — modal with title, price, vendor, SKU; new rows are kept **in memory only** (no POST to the API); success **toast**
+- Ratings **below 3.5** highlighted in red
+- Row **⋮** control is a **placeholder** (per spec)
 
-**Где применялся ИИ** (ассистент в Cursor): ревью уже написанного кода, сверка с формулировками ТЗ, прогон тестов и разбор ошибок, общие рекомендации по улучшению.
+## AI-assisted development disclosure
 
-**Примеры промптов:** «проверь соответствие ТЗ», «прогони тесты и линтер», «оцени узкие места», точечные вопросы по ошибкам сборки.
+Core implementation was written by the author; AI was **not** used to generate the whole codebase.
+
+**Where AI helped** (Cursor assistant): reviewing existing code against requirements, running through tests and linter output, and high-level suggestions for improvements.
+
+**Example prompt themes:** “check against the spec”, “run tests and fix failures”, “review edge cases”, targeted questions about build or runtime errors.
